@@ -33,6 +33,7 @@ export const Route = createFileRoute("/api/local-seo/maps/$projectId/$z/$x/$y")(
             const project = await ProjectRepository.getProjectForOrganization(
               tile.projectId,
               context.organizationId,
+              context,
             );
             if (!project) throw new AppError("NOT_FOUND");
             return await GoogleMapsService.getTile(tile.z, tile.x, tile.y);

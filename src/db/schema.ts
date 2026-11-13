@@ -97,6 +97,7 @@ export const {
   accountDeletionRequests,
   guestAccounts,
   projects,
+  projectMembers,
   savedKeywords,
   savedKeywordTags,
   savedKeywordTagAssignments,

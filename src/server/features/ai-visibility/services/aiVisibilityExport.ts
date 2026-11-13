@@ -110,6 +110,7 @@ export async function handleAiVisibilityDownload(
   const project = await ProjectRepository.getProjectForOrganization(
     projectId.data,
     auth.organizationId,
+    auth,
   );
   if (!project) return new Response("Not found", { status: 404 });
   const id = z.string().uuid().safeParse(url.searchParams.get("exportId"));

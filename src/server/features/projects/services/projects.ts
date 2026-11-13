@@ -1,3 +1,7 @@
+import {
+  isRestrictedProjectMember,
+  type ProjectCaller,
+} from "../project-access";
 import type {
   ArchiveProjectInput,
   CreateProjectInput,
@@ -64,22 +68,28 @@ function isReservedDefaultConflict(
 const RESERVED_DEFAULT_MESSAGE =
   'A project named "Default" with no domain already exists. Pick a different name or add a domain.';
 
-export async function listProjects(organizationId: string) {
-  const rows = await ProjectRepository.listProjects(organizationId);
+export async function listProjects(
+  organizationId: string,
+  caller?: ProjectCaller,
+) {
+  const rows = await ProjectRepository.listProjects(organizationId, caller);
   return rows.map(mapProject);
 }
 
 // Source of truth for "which projects does this org have", guaranteeing at least
-// one. Count-based — never matches on the "Default" name — so renaming the last
+// one for callers who can create projects. Count-based — never matches on the "Default" name — so renaming the last
 // project does not cause a spurious second Default to be created on next visit.
-export async function listProjectsEnsuringOne(organizationId: string) {
-  const existing = await listProjects(organizationId);
-  if (existing.length > 0) {
+export async function listProjectsEnsuringOne(
+  organizationId: string,
+  caller?: ProjectCaller,
+) {
+  const existing = await listProjects(organizationId, caller);
+  if (existing.length > 0 || (await isRestrictedProjectMember(caller))) {
     return existing;
   }
 
   await ProjectRepository.tryCreateDefaultProject(organizationId);
-  return listProjects(organizationId);
+  return listProjects(organizationId, caller);
 }
 
 /**
@@ -157,8 +167,14 @@ export async function archiveProject(
   return { success: true };
 }
 
-export async function listArchivedProjects(organizationId: string) {
-  const rows = await ProjectRepository.listArchivedProjects(organizationId);
+export async function listArchivedProjects(
+  organizationId: string,
+  caller?: ProjectCaller,
+) {
+  const rows = await ProjectRepository.listArchivedProjects(
+    organizationId,
+    caller,
+  );
   return rows.map(mapProject);
 }
 
@@ -189,10 +205,12 @@ export async function restoreProject(
 export async function getProjectForOrganization(
   organizationId: string,
   projectId: string,
+  caller?: ProjectCaller,
 ) {
   const project = await ProjectRepository.getProjectForOrganization(
     projectId,
     organizationId,
+    caller,
   );
   if (!project) {
     throw new AppError("NOT_FOUND");

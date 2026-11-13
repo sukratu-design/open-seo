@@ -91,7 +91,13 @@ describe("OpenSEO's tools on the Every App gateway", () => {
     expect(response.status).toBe(200);
     const catalog = await response.json<ToolsListResponseV1>();
     expect(catalog.warnings ?? []).toEqual([]);
-    expect(catalog.tools).toHaveLength(84);
+    expect(catalog.tools.map((tool) => tool.name)).toEqual(
+      expect.arrayContaining([
+        "list_project_members",
+        "add_project_member",
+        "remove_project_member",
+      ]),
+    );
     expect(catalog.instructions?.length).toBeLessThanOrEqual(1024);
     for (const tool of catalog.tools) {
       expect(tool.description.length, tool.name).toBeLessThanOrEqual(2048);
@@ -205,4 +211,39 @@ describe("OpenSEO's tools on the Every App gateway", () => {
       delete workerEnv.KV;
     }
   });
+});
+
+it("refuses project creation for a signed Gateway member", async () => {
+  const token = await mintIdentityJwt(privateKeyPem, {
+    subject: {
+      sub: "user_1",
+      email: "ana@example.com",
+      orgId: "org_1",
+      orgRole: "member",
+    },
+    audience: AUDIENCE,
+    issuer: ISSUER,
+    channel: "mcp",
+    actor: { sub: "oauth:conn_1" },
+    scopes: ["mcp:write"],
+    toolCall: { id: "create-denied", name: "create_project" },
+  });
+  const response = await post(
+    TOOLS_CALL_PATH,
+    {
+      v: 1,
+      name: "create_project",
+      arguments: { name: "Client project" },
+      callId: "create-denied",
+    },
+    { [IDENTITY_HEADER]: token },
+  );
+  expect(response.status).toBe(200);
+  const body = await response.json<{
+    result: { isError: boolean; content: { text: string }[] };
+  }>();
+  expect(body.result.isError).toBe(true);
+  expect(body.result.content[0]?.text).toContain(
+    "Your organization role does not allow this action.",
+  );
 });

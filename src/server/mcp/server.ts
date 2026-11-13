@@ -1,4 +1,9 @@
 import {
+  listProjectMembersTool,
+  addProjectMemberTool,
+  removeProjectMemberTool,
+} from "@/server/mcp/tools/project-members";
+import {
   getAiVisibilityTrackerTool,
   generateAiVisibilityPromptsTool,
   researchAiVisibilityPromptsTool,
@@ -260,6 +265,9 @@ export function registerOpenSeoTools(
 ) {
   register(whoamiTool);
   register(listProjectsTool);
+  register(listProjectMembersTool);
+  register(addProjectMemberTool);
+  register(removeProjectMemberTool);
   register(createProjectTool);
   register(researchProjectWebsiteTool);
   register(saveProjectWebsiteSetupTool);

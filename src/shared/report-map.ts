@@ -36,7 +36,7 @@ export type MapGrantScope = {
  */
 export function readMapGrant(grant: string) {
   const parts = grant.split("~");
-  if (parts.length !== 8) return null;
+  if (parts.length !== 8 && parts.length !== 9) return null;
   const numbers = parts.slice(0, 7).map(Number);
   if (!numbers.every(Number.isFinite)) return null;
   const [south, west, north, east, minZoom, maxZoom, expiresAt] = numbers;
@@ -45,7 +45,8 @@ export function readMapGrant(grant: string) {
     minZoom,
     maxZoom,
     expiresAt,
-    signed: parts.slice(0, 7).join("~"),
-    signature: parts[7],
+    projectId: parts.length === 9 ? parts[7] : undefined,
+    signed: parts.slice(0, -1).join("~"),
+    signature: parts.at(-1)!,
   };
 }

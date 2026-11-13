@@ -23,7 +23,7 @@ const projectScopedSchema = z.object({ projectId: z.string().min(1) });
 export const getProjects = createServerFn({ method: "POST" })
   .middleware(requireAuthenticatedContext)
   .handler(async ({ context }) =>
-    ProjectService.listProjectsEnsuringOne(context.organizationId),
+    ProjectService.listProjectsEnsuringOne(context.organizationId, context),
   );
 
 export const createProject = createServerFn({ method: "POST" })
@@ -114,7 +114,7 @@ export const archiveProject = createServerFn({ method: "POST" })
 export const getArchivedProjects = createServerFn({ method: "POST" })
   .middleware(requireAuthenticatedContext)
   .handler(async ({ context }) =>
-    ProjectService.listArchivedProjects(context.organizationId),
+    ProjectService.listArchivedProjects(context.organizationId, context),
   );
 
 export const restoreProject = createServerFn({ method: "POST" })
@@ -140,5 +140,6 @@ export const getProjectAccess = createServerFn({ method: "POST" })
     return ProjectService.getProjectForOrganization(
       context.organizationId,
       data.projectId,
+      context,
     );
   });

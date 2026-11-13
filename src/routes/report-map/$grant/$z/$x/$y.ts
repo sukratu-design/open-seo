@@ -33,10 +33,10 @@ const refused = () =>
 export const Route = createFileRoute("/report-map/$grant/$z/$x/$y")({
   server: {
     handlers: {
-      GET: async ({ params }) => {
+      GET: async ({ params, request }) => {
         const tile = tileSchema.safeParse(params);
         if (!tile.success) return refused();
-        const scope = await verifyReportMapGrant(params.grant);
+        const scope = await verifyReportMapGrant(params.grant, request);
         if (!scope || !grantCoversTile(tile.data, scope)) return refused();
         return GoogleMapsService.getTile(tile.data.z, tile.data.x, tile.data.y);
       },

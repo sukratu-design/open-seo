@@ -1,3 +1,4 @@
+import { isRestrictedProjectMember } from "@/server/features/projects/project-access";
 import { ProjectService } from "@/server/features/projects/services/ProjectService";
 import { mcpResponse } from "@/server/mcp/formatters";
 import { type ToolContext } from "@/server/mcp/context";
@@ -35,11 +36,16 @@ export const listProjectsTool = {
   },
   handler: async (_args: Record<string, never>, context: ToolContext) => {
     const { baseUrl, organizationId } = context.auth;
-    const projects = await ProjectService.listProjects(organizationId);
+    const projects = await ProjectService.listProjects(
+      organizationId,
+      context.auth,
+    );
     const lines =
       projects.length === 0
         ? [
-            "No projects yet. Ask the user for their website, then call create_project with its domain. Creating a project uses no credits.",
+            (await isRestrictedProjectMember(context.auth))
+              ? "No projects assigned. Ask an owner or admin to give you project access."
+              : "No projects yet. Ask the user for their website, then call create_project with its domain. Creating a project uses no credits.",
           ]
         : projects.map(
             (p) =>

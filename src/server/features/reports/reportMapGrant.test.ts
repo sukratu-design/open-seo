@@ -5,6 +5,12 @@ import {
   verifyReportMapGrant,
 } from "./reportMapGrant";
 
+vi.mock("@/middleware/ensure-user/resolve", () => ({}));
+vi.mock(
+  "@/server/features/projects/repositories/ProjectRepository",
+  () => ({}),
+);
+
 const reportWithGrid = `<!doctype html><html><body>
 <figure data-widget="rank-grid"><script type="application/json">{"version":1,"center":{"lat":40.44,"lng":-79.99},"keywords":[{"keyword":"self storage","points":[{"row":0,"col":0,"lat":40.458,"lng":-80.013,"rank":3},{"row":2,"col":2,"lat":40.422,"lng":-79.967,"rank":null}]}]}</script><svg></svg></figure>
 </body></html>`;
@@ -63,7 +69,9 @@ describe("report map grants", () => {
         .replaceAll("40.4", "40.7") + "</body>",
     );
     const grants = await createReportMapGrants(twoLocations);
-    const scopes = await Promise.all(grants.map(verifyReportMapGrant));
+    const scopes = await Promise.all(
+      grants.map((grant) => verifyReportMapGrant(grant)),
+    );
 
     expect(scopes).toHaveLength(2);
     const [pittsburgh, north] = scopes;

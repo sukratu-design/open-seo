@@ -1,12 +1,27 @@
-import { and, count, desc, eq, isNotNull, isNull, sql } from "drizzle-orm";
+import {
+  isRestrictedProjectMember,
+  type ProjectCaller,
+} from "../project-access";
+import {
+  and,
+  count,
+  desc,
+  eq,
+  exists,
+  isNotNull,
+  isNull,
+  sql,
+} from "drizzle-orm";
 import { db } from "@/db";
-import { projects, samSessions } from "@/db/schema";
+import { projects, projectMembers, samSessions } from "@/db/schema";
 import { AppError } from "@/server/lib/errors";
 
-async function listProjects(organizationId: string) {
+async function listProjects(organizationId: string, caller?: ProjectCaller) {
+  const access = await projectAccessFilter(caller);
   return db.query.projects.findMany({
     where: and(
       eq(projects.organizationId, organizationId),
+      access,
       isNull(projects.archivedAt),
     ),
     orderBy: [desc(projects.createdAt), desc(projects.id)],
@@ -29,7 +44,9 @@ async function countProjects(organizationId: string) {
 async function getProjectForOrganization(
   projectId: string,
   organizationId: string,
+  caller?: ProjectCaller,
 ) {
+  const access = await projectAccessFilter(caller);
   const [project] = await db
     .select()
     .from(projects)
@@ -37,6 +54,7 @@ async function getProjectForOrganization(
       and(
         eq(projects.id, projectId),
         eq(projects.organizationId, organizationId),
+        access,
         isNull(projects.archivedAt),
       ),
     )
@@ -50,7 +68,9 @@ async function getProjectForOrganization(
 async function getArchivedProjectForOrganization(
   projectId: string,
   organizationId: string,
+  caller?: ProjectCaller,
 ) {
+  const access = await projectAccessFilter(caller);
   const [project] = await db
     .select()
     .from(projects)
@@ -58,6 +78,7 @@ async function getArchivedProjectForOrganization(
       and(
         eq(projects.id, projectId),
         eq(projects.organizationId, organizationId),
+        access,
         isNotNull(projects.archivedAt),
       ),
     )
@@ -189,10 +210,15 @@ async function tryCreateDefaultProject(organizationId: string) {
   return inserted.length > 0 ? id : null;
 }
 
-async function listArchivedProjects(organizationId: string) {
+async function listArchivedProjects(
+  organizationId: string,
+  caller?: ProjectCaller,
+) {
+  const access = await projectAccessFilter(caller);
   return db.query.projects.findMany({
     where: and(
       eq(projects.organizationId, organizationId),
+      access,
       isNotNull(projects.archivedAt),
     ),
     orderBy: [desc(projects.archivedAt), desc(projects.id)],
@@ -275,3 +301,21 @@ export const ProjectRepository = {
   restoreProject,
   deleteArchivedProject,
 } as const;
+
+// Omitted caller is reserved for trusted organization work or reads after an
+// entry point has already authorized the project. Request entry points pass
+// the identity resolved by the authentication boundary.
+async function projectAccessFilter(caller?: ProjectCaller) {
+  if (!(await isRestrictedProjectMember(caller)) || !caller) return undefined;
+  return exists(
+    db
+      .select({ value: sql`1` })
+      .from(projectMembers)
+      .where(
+        and(
+          eq(projectMembers.projectId, projects.id),
+          eq(projectMembers.userId, caller.userId),
+        ),
+      ),
+  );
+}

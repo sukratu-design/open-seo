@@ -19,6 +19,7 @@ async function requireProjectAccess(
   const project = await ProjectService.getProjectForOrganization(
     auth.organizationId,
     projectId,
+    auth,
   );
   if (!project) {
     throw new AppError("FORBIDDEN");

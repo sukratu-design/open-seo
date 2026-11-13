@@ -1,6 +1,11 @@
+import { resolveUserContextFromHeaders } from "@/middleware/ensure-user/resolve";
+import { ProjectRepository } from "@/server/features/projects/repositories/ProjectRepository";
 import { Parser } from "htmlparser2";
 import { z } from "zod";
-import { getOptionalEnvValue } from "@/server/lib/runtime-env";
+import {
+  getOptionalEnvValue,
+  isEveryAppServerAuthMode,
+} from "@/server/lib/runtime-env";
 import {
   readMapGrant,
   REPORT_MAP_HEIGHT,
@@ -189,9 +194,12 @@ async function mapsKey() {
  * gets its own: a report covering several locations would otherwise share one
  * grant sized to all of them, and its zooms would hold every map far out.
  */
-export async function createReportMapGrants(html: string) {
+export async function createReportMapGrants(html: string, projectId?: string) {
   const apiKey = await mapsKey();
   if (!apiKey) return [];
+  const everyApp = await isEveryAppServerAuthMode();
+  const scopedProjectId = everyApp ? projectId : undefined;
+  if (everyApp && !scopedProjectId) return [];
   const expiresAt = Math.floor(Date.now() / 1000) + GRANT_TTL_SECONDS;
   const payloads = new Set(
     gridsInReport(html).map((points) => {
@@ -204,6 +212,7 @@ export async function createReportMapGrants(html: string) {
         scope.minZoom,
         scope.maxZoom,
         expiresAt,
+        ...(scopedProjectId ? [scopedProjectId] : []),
       ].join("~");
     }),
   );
@@ -217,6 +226,7 @@ export async function createReportMapGrants(html: string) {
 /** What a grant covers, or null when it is forged or expired. */
 export async function verifyReportMapGrant(
   grant: string,
+  request?: Request,
 ): Promise<MapGrantScope | null> {
   const parsed = readMapGrant(grant);
   if (!parsed || parsed.expiresAt * 1000 < Date.now()) return null;
@@ -235,6 +245,18 @@ export async function verifyReportMapGrant(
     new TextEncoder().encode(parsed.signed),
   );
   if (!valid) return null;
+  if (await isEveryAppServerAuthMode()) {
+    if (!request || !parsed.projectId) return null;
+    const caller = await resolveUserContextFromHeaders(request.headers);
+    if (
+      !(await ProjectRepository.getProjectForOrganization(
+        parsed.projectId,
+        caller.organizationId,
+        caller,
+      ))
+    )
+      return null;
+  }
   return {
     area: parsed.area,
     minZoom: parsed.minZoom,

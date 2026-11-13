@@ -34,6 +34,7 @@ describe("withMcpProjectAuth", () => {
     expect(mocks.getProjectForOrganization).toHaveBeenCalledWith(
       "org_123",
       "project_123",
+      expect.objectContaining({ userId: "user_123", role: "owner" }),
     );
     expect(handler).toHaveBeenCalledWith(
       { projectId: "project_123" },

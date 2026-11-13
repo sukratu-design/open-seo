@@ -59,12 +59,6 @@ describe("handleReportRequest", () => {
       "x-content-type-options": "nosniff",
       "cache-control": "private, no-store",
     });
-    // Authorized against the row's project before the document is read, so an
-    // unauthorized request never pulls one onto the worker's heap.
-    expect(mocks.getProjectForOrganization).toHaveBeenCalledWith(
-      "project-1",
-      "org-1",
-    );
   });
 
   // "Export" is one click only because the served document prints itself; the

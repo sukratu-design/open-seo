@@ -32,6 +32,7 @@ export const ensureUserMiddleware = createMiddleware({
     project = await ProjectRepository.getProjectForOrganization(
       projectId,
       context.organizationId,
+      context,
     );
 
     if (!project) {

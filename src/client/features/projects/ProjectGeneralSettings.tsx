@@ -1,3 +1,4 @@
+import { ProjectAccessSection } from "./ProjectAccessSection";
 import { useState } from "react";
 import { projectsQueryOptions } from "@/client/features/projects/projectQueries";
 import { useNavigate } from "@tanstack/react-router";
@@ -42,6 +43,7 @@ export function ProjectGeneralSettings({ projectId }: { projectId: string }) {
           <div className="space-y-8">
             {/* key resets the form's local state when switching between projects */}
             <GeneralSection key={project.id} project={project} />
+            <ProjectAccessSection projectId={project.id} />
             <DangerSection project={project} canArchive={projects.length > 1} />
           </div>
         );

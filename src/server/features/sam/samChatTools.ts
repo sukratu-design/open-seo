@@ -1,4 +1,9 @@
 import {
+  listProjectMembersTool,
+  addProjectMemberTool,
+  removeProjectMemberTool,
+} from "@/server/mcp/tools/project-members";
+import {
   getAiVisibilityTrackerTool,
   generateAiVisibilityPromptsTool,
   researchAiVisibilityPromptsTool,
@@ -381,6 +386,9 @@ export function buildSamMcpTools(
     }),
     ...scrapeTools(project.domain),
     whoami: adaptTool(whoamiTool),
+    list_project_members: adaptTool(listProjectMembersTool),
+    add_project_member: adaptTool(addProjectMemberTool),
+    remove_project_member: adaptTool(removeProjectMemberTool),
     // Writes only: the project's memory is already injected into every turn as
     // a read-only context block, so get_project_context would just re-fetch it.
     update_project_context: adaptTool(buildUpdateProjectContextTool("sam")),

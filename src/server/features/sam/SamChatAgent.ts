@@ -1,3 +1,5 @@
+import type { Connection, ConnectionContext } from "agents";
+import { resolveEveryAppContext } from "@/middleware/ensure-user/everyApp";
 /* eslint-disable max-lines -- the SAM Durable Object: per-turn gates, credit hold and metering, telemetry, and recovery hooks */
 import { Think } from "@cloudflare/think";
 import type {
@@ -35,6 +37,7 @@ import {
 import { buildSamChatModel } from "@/server/lib/openrouter";
 import {
   isHostedServerAuthMode,
+  isEveryAppServerAuthMode,
   usesBetterAuthServer,
 } from "@/server/lib/runtime-env";
 import {
@@ -381,11 +384,28 @@ export class SamChatAgent extends Think {
           "You no longer have access to this organization, so I can't continue this chat.",
         );
       }
+      const everyApp = await isEveryAppServerAuthMode();
+      const role = everyApp
+        ? ((await this.ctx.storage.get<string>("sam-gateway-role")) ?? "member")
+        : (membership?.role ?? "owner");
+      if (
+        everyApp &&
+        !(await ProjectRepository.getProjectForOrganization(
+          ctx.project.id,
+          organizationId,
+          { userId: ctx.row.userId, role },
+        ))
+      ) {
+        turn.refusal = "no_access";
+        return this.refusalTurn(
+          "You no longer have access to this project, so I can't continue this chat.",
+        );
+      }
       const authContext: ToolAuthContext = {
         userId: ctx.row.userId,
         userEmail: ctx.userEmail,
         organizationId,
-        role: membership?.role ?? "owner",
+        role,
         baseUrl,
         clientId: null,
         scopes: [MCP_SCOPE],
@@ -597,7 +617,33 @@ export class SamChatAgent extends Think {
   // edit (rewind, then resend the edited text). Authorized in the Worker like
   // every other HTTP request to this DO. Think's own onRequest wrapper handles
   // /get-messages before delegating here.
+  private async rememberGatewayRole(request: Request) {
+    if (!(await isEveryAppServerAuthMode())) return;
+    const caller = await resolveEveryAppContext(request.headers);
+    const session = await SamSessionRepository.getActiveSession(
+      this.name,
+      caller.userId,
+    );
+    if (
+      !session ||
+      !(await ProjectRepository.getProjectForOrganization(
+        session.projectId,
+        caller.organizationId,
+        caller,
+      ))
+    ) {
+      throw new Error("Chat session not found");
+    }
+    await this.ctx.storage.put("sam-gateway-role", caller.role);
+  }
+
+  override async onConnect(connection: Connection, context: ConnectionContext) {
+    await withPgClient(() => this.rememberGatewayRole(context.request));
+    return super.onConnect(connection, context);
+  }
+
   async onRequest(request: Request): Promise<Response> {
+    await withPgClient(() => this.rememberGatewayRole(request));
     if (
       request.method === "POST" &&
       new URL(request.url).pathname.endsWith("/rewind")

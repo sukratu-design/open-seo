@@ -98,6 +98,7 @@ async function authorizeSamChat(
     ? await ProjectRepository.getProjectForOrganization(
         session.projectId,
         context.organizationId,
+        context,
       )
     : null;
   if (!session || !project) {

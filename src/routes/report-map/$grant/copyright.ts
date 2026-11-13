@@ -31,7 +31,10 @@ export const Route = createFileRoute("/report-map/$grant/copyright")({
         const viewport = viewportQuerySchema
           .pipe(googleMapsViewportSchema)
           .safeParse(query);
-        if (!viewport.success || !(await verifyReportMapGrant(params.grant)))
+        if (
+          !viewport.success ||
+          !(await verifyReportMapGrant(params.grant, request))
+        )
           return Response.json(
             { error: "Not found." },
             { status: 404, headers },

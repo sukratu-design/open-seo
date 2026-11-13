@@ -31,8 +31,11 @@ function IndexRedirect() {
   });
 
   useEffect(() => {
-    // getProjects always returns at least one project.
-    const projectId = lastProjectId ?? data?.[0]?.id;
+    // Restricted members may have no assigned projects.
+    const projectId = data
+      ? (data.find((project) => project.id === lastProjectId)?.id ??
+        data[0]?.id)
+      : lastProjectId;
     if (!projectId) return;
     void navigate({
       to: "/p/$projectId",
@@ -76,6 +79,12 @@ function IndexRedirect() {
           </StatusScreen>
         }
       />
+    );
+  }
+
+  if (data?.length === 0) {
+    return (
+      <StatusScreen description="You have no projects yet. Ask an owner or admin to give you project access." />
     );
   }
 

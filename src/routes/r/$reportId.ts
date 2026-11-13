@@ -63,11 +63,13 @@ async function handleReportRequest(
   const project = await ProjectRepository.getProjectForOrganization(
     projectId,
     context.organizationId,
+    context,
   );
   if (!project) {
     const archived = await ProjectRepository.getArchivedProjectForOrganization(
       projectId,
       context.organizationId,
+      context,
     );
     if (!archived) return reportNotFound();
     return textResponse(
@@ -87,7 +89,7 @@ async function handleReportRequest(
   return reportDocumentResponse(html, {
     print,
     cacheControl: "private, no-store",
-    mapGrants: await createReportMapGrants(html),
+    mapGrants: await createReportMapGrants(html, projectId),
   });
 }
 

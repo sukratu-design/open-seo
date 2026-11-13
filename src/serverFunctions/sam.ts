@@ -68,6 +68,7 @@ export const archiveSamSession = createServerFn({ method: "POST" })
       ? await ProjectRepository.getProjectForOrganization(
           session.projectId,
           context.organizationId,
+          context,
         )
       : null;
     if (!session || !project) {

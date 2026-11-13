@@ -163,6 +163,28 @@ export const projects = sqliteTable(
   ],
 );
 
+export const projectMembers = sqliteTable(
+  "project_members",
+  {
+    projectId: text("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    addedBy: text("added_by").references(() => user.id, {
+      onDelete: "set null",
+    }),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(current_timestamp)`),
+  },
+  (table) => [
+    primaryKey({ columns: [table.projectId, table.userId] }),
+    index("project_members_user_id_idx").on(table.userId),
+  ],
+);
+
 // User-saved keywords within a project. This is the canonical saved list.
 export const savedKeywords = sqliteTable(
   "saved_keywords",
