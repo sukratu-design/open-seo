@@ -1,3 +1,4 @@
+import { TRUSTED_ORG_WORK } from "@/server/features/projects/project-access";
 import { waitUntil } from "cloudflare:workers";
 import { generateText, Output } from "ai";
 import { sortBy } from "remeda";
@@ -230,6 +231,8 @@ async function relevantQuestions(
     ProjectRepository.getProjectForOrganization(
       input.projectId,
       customer.organizationId,
+      // requireProjectContext / withMcpProjectAuth already authorized this project.
+      TRUSTED_ORG_WORK,
     ),
     ProjectContextRepository.listSections(input.projectId),
   ]);

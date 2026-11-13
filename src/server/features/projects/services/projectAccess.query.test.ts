@@ -78,6 +78,13 @@ it("lists and loads only a member's assigned projects; no rows stays empty witho
       role: "member",
     }),
   ).toEqual([]);
+  // getProjectAccess uses this service lookup; an empty grant set must also deny loads.
+  await expect(
+    ProjectService.getProjectForOrganization("org", "allowed", {
+      userId: "unassigned",
+      role: "member",
+    }),
+  ).rejects.toMatchObject({ code: "NOT_FOUND" });
   const count = await client.execute(
     "SELECT COUNT(*) AS count FROM projects WHERE archived_at IS NULL AND organization_id = 'org'",
   );
@@ -167,7 +174,13 @@ it("only admins can add/remove grants and unknown emails explain Gateway onboard
     (await ProjectService.getProjectForOrganization("org", "hidden", member))
       .id,
   ).toBe("hidden");
+  const load = withMcpProjectAuth(async (_args, { project }) => project.id);
+  const context = makeToolContext(member);
+  expect(await load({ projectId: "hidden" }, context)).toBe("hidden");
   await ProjectMemberService.removeProjectMember("hidden", "client", admin);
+  await expect(load({ projectId: "hidden" }, context)).rejects.toMatchObject({
+    code: "NOT_FOUND",
+  });
   await expect(
     ProjectService.getProjectForOrganization("org", "hidden", member),
   ).rejects.toMatchObject({ code: "NOT_FOUND" });

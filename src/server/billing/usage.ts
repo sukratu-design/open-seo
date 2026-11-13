@@ -1,3 +1,4 @@
+import { TRUSTED_ORG_WORK } from "@/server/features/projects/project-access";
 import { sort, sumBy } from "remeda";
 import {
   AUTUMN_SEO_DATA_BALANCE_FEATURE_ID,
@@ -45,8 +46,9 @@ export async function getOrganizationBillingUsage(
       // has one.
       groupedBy("creditFeature"),
       groupedBy("projectId"),
-      ProjectRepository.listProjects(organizationId),
-      ProjectRepository.listArchivedProjects(organizationId),
+      // Billing reports cover the whole organization, including archived projects.
+      ProjectRepository.listProjects(organizationId, TRUSTED_ORG_WORK),
+      ProjectRepository.listArchivedProjects(organizationId, TRUSTED_ORG_WORK),
     ]);
 
   // Only this organization's projects get a name; any other id reads as Other.

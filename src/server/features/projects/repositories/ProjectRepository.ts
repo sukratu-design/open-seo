@@ -1,5 +1,6 @@
 import {
   isRestrictedProjectMember,
+  TRUSTED_ORG_WORK,
   type ProjectCaller,
 } from "../project-access";
 import {
@@ -16,7 +17,10 @@ import { db } from "@/db";
 import { projects, projectMembers, samSessions } from "@/db/schema";
 import { AppError } from "@/server/lib/errors";
 
-async function listProjects(organizationId: string, caller?: ProjectCaller) {
+async function listProjects(
+  organizationId: string,
+  caller: ProjectCaller | typeof TRUSTED_ORG_WORK,
+) {
   const access = await projectAccessFilter(caller);
   return db.query.projects.findMany({
     where: and(
@@ -44,7 +48,7 @@ async function countProjects(organizationId: string) {
 async function getProjectForOrganization(
   projectId: string,
   organizationId: string,
-  caller?: ProjectCaller,
+  caller: ProjectCaller | typeof TRUSTED_ORG_WORK,
 ) {
   const access = await projectAccessFilter(caller);
   const [project] = await db
@@ -68,7 +72,7 @@ async function getProjectForOrganization(
 async function getArchivedProjectForOrganization(
   projectId: string,
   organizationId: string,
-  caller?: ProjectCaller,
+  caller: ProjectCaller | typeof TRUSTED_ORG_WORK,
 ) {
   const access = await projectAccessFilter(caller);
   const [project] = await db
@@ -212,7 +216,7 @@ async function tryCreateDefaultProject(organizationId: string) {
 
 async function listArchivedProjects(
   organizationId: string,
-  caller?: ProjectCaller,
+  caller: ProjectCaller | typeof TRUSTED_ORG_WORK,
 ) {
   const access = await projectAccessFilter(caller);
   return db.query.projects.findMany({
@@ -302,11 +306,14 @@ export const ProjectRepository = {
   deleteArchivedProject,
 } as const;
 
-// Omitted caller is reserved for trusted organization work or reads after an
+// The trusted marker is reserved for organization work or reads after an
 // entry point has already authorized the project. Request entry points pass
 // the identity resolved by the authentication boundary.
-async function projectAccessFilter(caller?: ProjectCaller) {
-  if (!(await isRestrictedProjectMember(caller)) || !caller) return undefined;
+async function projectAccessFilter(
+  caller: ProjectCaller | typeof TRUSTED_ORG_WORK,
+) {
+  if (!(await isRestrictedProjectMember(caller)) || caller === TRUSTED_ORG_WORK)
+    return undefined;
   return exists(
     db
       .select({ value: sql`1` })

@@ -1,5 +1,6 @@
 import {
   isRestrictedProjectMember,
+  type TRUSTED_ORG_WORK,
   type ProjectCaller,
 } from "../project-access";
 import type {
@@ -70,7 +71,7 @@ const RESERVED_DEFAULT_MESSAGE =
 
 export async function listProjects(
   organizationId: string,
-  caller?: ProjectCaller,
+  caller: ProjectCaller | typeof TRUSTED_ORG_WORK,
 ) {
   const rows = await ProjectRepository.listProjects(organizationId, caller);
   return rows.map(mapProject);
@@ -81,7 +82,7 @@ export async function listProjects(
 // project does not cause a spurious second Default to be created on next visit.
 export async function listProjectsEnsuringOne(
   organizationId: string,
-  caller?: ProjectCaller,
+  caller: ProjectCaller | typeof TRUSTED_ORG_WORK,
 ) {
   const existing = await listProjects(organizationId, caller);
   if (existing.length > 0 || (await isRestrictedProjectMember(caller))) {
@@ -169,7 +170,7 @@ export async function archiveProject(
 
 export async function listArchivedProjects(
   organizationId: string,
-  caller?: ProjectCaller,
+  caller: ProjectCaller | typeof TRUSTED_ORG_WORK,
 ) {
   const rows = await ProjectRepository.listArchivedProjects(
     organizationId,
@@ -205,7 +206,7 @@ export async function restoreProject(
 export async function getProjectForOrganization(
   organizationId: string,
   projectId: string,
-  caller?: ProjectCaller,
+  caller: ProjectCaller | typeof TRUSTED_ORG_WORK,
 ) {
   const project = await ProjectRepository.getProjectForOrganization(
     projectId,

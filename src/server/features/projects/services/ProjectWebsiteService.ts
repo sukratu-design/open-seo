@@ -1,3 +1,4 @@
+import { TRUSTED_ORG_WORK } from "@/server/features/projects/project-access";
 import { waitUntil } from "cloudflare:workers";
 import { type BillingCustomerContext } from "@/server/billing/subscription";
 import type { ContextAuthor } from "@/types/schemas/projectContext";
@@ -25,6 +26,8 @@ async function requireProject(
   const project = await ProjectRepository.getProjectForOrganization(
     projectId,
     customer.organizationId,
+    // requireProjectContext / withMcpProjectAuth already authorized this project.
+    TRUSTED_ORG_WORK,
   );
   if (!project) throw new AppError("NOT_FOUND");
   return project;

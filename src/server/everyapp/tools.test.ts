@@ -98,6 +98,9 @@ describe("OpenSEO's tools on the Every App gateway", () => {
         "remove_project_member",
       ]),
     );
+    expect(
+      catalog.tools.find((tool) => tool.name === "remove_project_member")?.risk,
+    ).toBe("write");
     expect(catalog.instructions?.length).toBeLessThanOrEqual(1024);
     for (const tool of catalog.tools) {
       expect(tool.description.length, tool.name).toBeLessThanOrEqual(2048);

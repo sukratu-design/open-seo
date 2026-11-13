@@ -47,9 +47,9 @@ describe("project service", () => {
     it("returns existing projects without creating a Default", async () => {
       mocks.listProjects.mockResolvedValue([namedProject]);
 
-      await expect(listProjectsEnsuringOne("org_1")).resolves.toEqual([
-        namedProject,
-      ]);
+      await expect(
+        listProjectsEnsuringOne("org_1", { userId: "admin", role: "admin" }),
+      ).resolves.toEqual([namedProject]);
       expect(mocks.tryCreateDefaultProject).not.toHaveBeenCalled();
       expect(mocks.listProjects).toHaveBeenCalledTimes(1);
     });
@@ -60,9 +60,9 @@ describe("project service", () => {
         .mockResolvedValueOnce([defaultProject]);
       mocks.tryCreateDefaultProject.mockResolvedValue("project_default");
 
-      await expect(listProjectsEnsuringOne("org_1")).resolves.toEqual([
-        defaultProject,
-      ]);
+      await expect(
+        listProjectsEnsuringOne("org_1", { userId: "admin", role: "admin" }),
+      ).resolves.toEqual([defaultProject]);
       expect(mocks.tryCreateDefaultProject).toHaveBeenCalledWith("org_1");
       expect(mocks.listProjects).toHaveBeenCalledTimes(2);
     });

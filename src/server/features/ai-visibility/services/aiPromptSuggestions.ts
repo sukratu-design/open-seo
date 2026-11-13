@@ -1,3 +1,4 @@
+import { TRUSTED_ORG_WORK } from "@/server/features/projects/project-access";
 import { generateText, Output } from "ai";
 import { AiVisibilityRepository as repo } from "../repositories/AiVisibilityRepository";
 import { aiTopics } from "./aiVisibilityConfiguration";
@@ -32,6 +33,8 @@ export async function generateAiPrompts(
   const project = await ProjectRepository.getProjectForOrganization(
     input.projectId,
     customer.organizationId,
+    // requireProjectContext / withMcpProjectAuth already authorized this project.
+    TRUSTED_ORG_WORK,
   );
   if (!project) throw new AppError("NOT_FOUND");
   if (!project.domain)

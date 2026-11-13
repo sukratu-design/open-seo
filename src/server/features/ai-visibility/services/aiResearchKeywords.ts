@@ -1,3 +1,4 @@
+import { TRUSTED_ORG_WORK } from "@/server/features/projects/project-access";
 import { env } from "cloudflare:workers";
 import { z } from "zod";
 import { runBatch } from "@/db/runBatch";
@@ -166,6 +167,8 @@ export async function runAiResearchSetup(
   const project = await ProjectRepository.getProjectForOrganization(
     input.projectId,
     customer.organizationId,
+    // Background setup work was authorized when the research workflow started.
+    TRUSTED_ORG_WORK,
   );
   if (!project) throw new AppError("NOT_FOUND");
   if (!project.domain)

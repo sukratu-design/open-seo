@@ -1,3 +1,4 @@
+import { TRUSTED_ORG_WORK } from "@/server/features/projects/project-access";
 import { ProjectRepository } from "@/server/features/projects/repositories/ProjectRepository";
 import { normalizeAndValidateStartUrl } from "@/server/lib/audit/url-policy";
 import { publicFetch } from "@/server/lib/public-fetch";
@@ -31,6 +32,8 @@ async function loadProject(scope: ProjectScope) {
   const project = await ProjectRepository.getProjectForOrganization(
     scope.projectId,
     scope.organizationId,
+    // requireProjectContext / withMcpProjectAuth already authorized this project.
+    TRUSTED_ORG_WORK,
   );
   if (!project) throw new AppError("NOT_FOUND");
   return project;
