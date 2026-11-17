@@ -102,7 +102,7 @@ export default {
   ],
   // Optional, each all or nothing: OpenSEO opens without them.
   features: {
-    clientInvites: {
+    "client-invites": {
       name: "Client invites",
       why: "Lets owners invite a client to one project by email: OpenSEO asks the Gateway to invite them as a Member.",
       steps: [
