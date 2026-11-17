@@ -13,6 +13,10 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 const { workerEnv } = vi.hoisted(() => ({
   workerEnv: { AUTH_MODE: "everyapp" } as Record<string, unknown>,
 }));
+vi.mock(
+  "@/server/features/projects/repositories/ProjectMemberRepository",
+  () => ({ ProjectMemberRepository: { acceptInvites: vi.fn(async () => {}) } }),
+);
 vi.mock("cloudflare:workers", () => ({
   env: workerEnv,
   waitUntil: vi.fn(),

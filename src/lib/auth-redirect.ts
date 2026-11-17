@@ -83,7 +83,11 @@ export function getCurrentAuthRedirectFromHref(href: string) {
  */
 export function isDocumentRoute(redirectTo: string) {
   // Both member reports and public shares are served by document handlers.
-  return redirectTo.startsWith("/r/") || redirectTo.startsWith("/s/");
+  return (
+    redirectTo.startsWith("/r/") ||
+    redirectTo.startsWith("/s/") ||
+    redirectTo.startsWith("/share/project/")
+  );
 }
 
 /**

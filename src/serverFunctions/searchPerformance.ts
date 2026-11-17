@@ -1,3 +1,4 @@
+import { GoogleDashboardCacheService } from "@/server/features/dashboard/services/GoogleDashboardCacheService";
 import { createServerFn } from "@tanstack/react-start";
 import {
   GscNotConnectedError,
@@ -130,6 +131,22 @@ export const getSearchPerformanceReport = createServerFn({ method: "POST" })
         }),
       ]);
 
+      // Only the unfiltered web report is a project-wide public summary.
+      if (type === "web" && !filters.length) {
+        await GoogleDashboardCacheService.save(
+          "gsc",
+          projectId,
+          context.organizationId,
+          {
+            totals: sumSearchTotals(current.rows),
+            trend: buildDailyTrend(current.rows, startDate, endDate).map(
+              (row) => ({ date: row.date, value: row.clicks }),
+            ),
+            startDate,
+            endDate,
+          },
+        );
+      }
       return {
         connected: true as const,
         range: {

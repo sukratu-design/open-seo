@@ -1,3 +1,4 @@
+import { ProjectMemberRepository } from "@/server/features/projects/repositories/ProjectMemberRepository";
 import { env } from "cloudflare:workers";
 import {
   ConfigurationError,
@@ -62,6 +63,7 @@ export async function resolveEveryAppUserContext(
   const role = ROLES.has(user.orgRole) ? user.orgRole : "member";
   const userEmail = await ensureUserRecord(user.id, user.email);
   const organizationId = await ensureSharedWorkspaceOrganization();
+  await ProjectMemberRepository.acceptInvites(user.id, userEmail);
   return {
     userId: user.id,
     userEmail,

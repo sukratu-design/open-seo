@@ -17,17 +17,26 @@ export const listProjectMembersTool = {
     description:
       "Every App owners/admins only: list explicit project access grants. Owners and admins always have access without a grant. Uses no credits.",
     inputSchema: { projectId },
-    outputSchema: z.looseObject({ members: z.array(member) }),
+    outputSchema: z.looseObject({
+      members: z.array(member),
+      invites: z.array(
+        z.looseObject({
+          id: z.string(),
+          email: z.string(),
+          createdAt: z.string(),
+        }),
+      ),
+    }),
     annotations: { readOnlyHint: true, openWorldHint: false },
   },
   handler: async (args: { projectId: string }, context: ToolContext) => {
-    const members = await ProjectMemberService.listProjectMembers(
+    const access = await ProjectMemberService.listAccess(
       args.projectId,
       context.auth,
     );
     return mcpResponse({
-      text: JSON.stringify(members),
-      structuredContent: { members },
+      text: JSON.stringify(access),
+      structuredContent: access,
     });
   },
 };
@@ -37,9 +46,9 @@ export const addProjectMemberTool = {
   config: {
     title: "Add project member",
     description:
-      "Every App owners/admins only: grant access by email. The person must open OpenSEO through the Gateway once first. Idempotent. Uses no credits.",
+      "Every App owners/admins only: grant access by email. Unknown emails are saved as pending project invites and invited through the Gateway when configured. Idempotent. Uses no credits.",
     inputSchema: { projectId, email: z.email().trim().toLowerCase() },
-    outputSchema: z.looseObject({ success: z.boolean() }),
+    outputSchema: z.looseObject({ status: z.enum(["added", "invited"]) }),
     annotations: {
       readOnlyHint: false,
       idempotentHint: true,
@@ -50,13 +59,13 @@ export const addProjectMemberTool = {
     args: { projectId: string; email: string },
     context: ToolContext,
   ) => {
-    const result = await ProjectMemberService.addProjectMember(
+    const result = await ProjectMemberService.inviteByEmail(
       args.projectId,
       args.email,
       context.auth,
     );
     return mcpResponse({
-      text: "Project access added.",
+      text: JSON.stringify(result),
       structuredContent: result,
     });
   },

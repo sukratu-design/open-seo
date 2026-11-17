@@ -197,6 +197,30 @@ export const projectMembers = pgTable(
   ],
 );
 
+export const projectInvites = pgTable(
+  "project_invites",
+  {
+    id: text("id").primaryKey(),
+    projectId: text("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    email: text("email").notNull(),
+    invitedByUserId: text("invited_by_user_id").references(() => user.id, {
+      onDelete: "set null",
+    }),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(current_timestamp)`),
+  },
+  (table) => [
+    uniqueIndex("project_invites_project_email_idx").on(
+      table.projectId,
+      table.email,
+    ),
+    index("project_invites_email_idx").on(table.email),
+  ],
+);
+
 // User-saved keywords within a project. This is the canonical saved list.
 export const savedKeywords = pgTable(
   "saved_keywords",
@@ -584,3 +608,28 @@ export const crawlerCredentials = pgTable(
 
 // Cross-request refresh claims survive Worker instances and prevent duplicate spend.
 export { dataRefreshClaims } from "./dashboard.schema";
+
+export const projectShareLinks = pgTable(
+  "project_share_links",
+  {
+    id: text("id").primaryKey(),
+    projectId: text("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    tokenHash: text("token_hash").notNull(),
+    createdByUserId: text("created_by_user_id").references(() => user.id, {
+      onDelete: "set null",
+    }),
+    createdAt: text("created_at").notNull().default(isoNow),
+    revokedAt: text("revoked_at"),
+  },
+  (table) => [
+    uniqueIndex("project_share_links_token_hash_idx").on(table.tokenHash),
+    uniqueIndex("project_share_links_active_project_idx")
+      .on(table.projectId)
+      .where(sql`${table.revokedAt} IS NULL`),
+  ],
+);

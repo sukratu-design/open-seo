@@ -8,13 +8,17 @@ export const getProjectMembers = createServerFn({ method: "POST" })
   .middleware(requireProjectContext)
   .validator(projectInput)
   .handler(({ data, context }) =>
-    ProjectMemberService.listProjectMembers(data.projectId, context),
+    ProjectMemberService.listAccess(data.projectId, context),
   );
-export const addProjectMember = createServerFn({ method: "POST" })
+export const inviteByEmail = createServerFn({ method: "POST" })
   .middleware(requireProjectContext)
-  .validator(projectInput.extend({ email: z.email().trim().toLowerCase() }))
+  .validator(
+    projectInput.extend({
+      email: z.string().trim().toLowerCase().pipe(z.email()),
+    }),
+  )
   .handler(({ data, context }) =>
-    ProjectMemberService.addProjectMember(data.projectId, data.email, context),
+    ProjectMemberService.inviteByEmail(data.projectId, data.email, context),
   );
 export const removeProjectMember = createServerFn({ method: "POST" })
   .middleware(requireProjectContext)
@@ -25,4 +29,11 @@ export const removeProjectMember = createServerFn({ method: "POST" })
       data.userId,
       context,
     ),
+  );
+
+export const revokeProjectInvite = createServerFn({ method: "POST" })
+  .middleware(requireProjectContext)
+  .validator(projectInput.extend({ inviteId: z.string().min(1) }))
+  .handler(({ data, context }) =>
+    ProjectMemberService.revokeInvite(data.projectId, data.inviteId, context),
   );

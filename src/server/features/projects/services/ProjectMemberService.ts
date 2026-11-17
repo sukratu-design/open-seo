@@ -1,3 +1,8 @@
+import { z } from "zod";
+import {
+  inviteGatewayMember,
+  uninviteGatewayMember,
+} from "@/server/everyapp/gatewayAdmin";
 import { requireOrgPermission } from "@/server/auth/org-gate";
 import { AppError } from "@/server/lib/errors";
 import { isEveryAppServerAuthMode } from "@/server/lib/runtime-env";
@@ -21,28 +26,64 @@ async function authorize(projectId: string, caller: Caller) {
   }
 }
 
-async function listProjectMembers(projectId: string, caller: Caller) {
+async function listAccess(projectId: string, caller: Caller) {
   await authorize(projectId, caller);
-  return ProjectMemberRepository.listProjectMembers(projectId);
+  const [members, invites] = await Promise.all([
+    ProjectMemberRepository.listProjectMembers(projectId),
+    ProjectMemberRepository.listInvites(projectId),
+  ]);
+  return { members, invites };
 }
 
-async function addProjectMember(
+async function inviteByEmail(projectId: string, input: string, caller: Caller) {
+  await authorize(projectId, caller);
+  const parsed = z
+    .string()
+    .trim()
+    .toLowerCase()
+    .pipe(z.email())
+    .safeParse(input);
+  if (!parsed.success)
+    throw new AppError("VALIDATION_ERROR", "Enter a valid email address.");
+  const email = parsed.data;
+  const user = await ProjectMemberRepository.findUserByEmail(email);
+  if (user) {
+    await ProjectMemberRepository.addProjectMember(
+      projectId,
+      user.id,
+      caller.userId,
+    );
+    await ProjectMemberRepository.acceptInvites(user.id, email);
+    return { status: "added" as const };
+  }
+  await ProjectMemberRepository.saveInvite(projectId, email, caller.userId);
+  // Close the first-sign-in race between the initial lookup and saving the invite.
+  const signedIn = await ProjectMemberRepository.findUserByEmail(email);
+  if (signedIn) {
+    await ProjectMemberRepository.acceptInvites(signedIn.id, email);
+    return { status: "added" as const };
+  }
+  return {
+    status: "invited" as const,
+    gateway: await inviteGatewayMember(email),
+  };
+}
+
+async function revokeInvite(
   projectId: string,
-  email: string,
+  inviteId: string,
   caller: Caller,
 ) {
   await authorize(projectId, caller);
-  const user = await ProjectMemberRepository.findUserByEmail(email);
-  if (!user)
-    throw new AppError(
-      "VALIDATION_ERROR",
-      "This person must open OpenSEO once through the Gateway before you can add them.",
-    );
-  await ProjectMemberRepository.addProjectMember(
+  const invite = await ProjectMemberRepository.revokeInvite(
     projectId,
-    user.id,
-    caller.userId,
+    inviteId,
   );
+  if (
+    invite &&
+    !(await ProjectMemberRepository.hasPendingInvites(invite.email))
+  )
+    await uninviteGatewayMember(invite.email);
   return { success: true };
 }
 
@@ -57,7 +98,8 @@ async function removeProjectMember(
 }
 
 export const ProjectMemberService = {
-  listProjectMembers,
-  addProjectMember,
+  listAccess,
+  inviteByEmail,
+  revokeInvite,
   removeProjectMember,
 };

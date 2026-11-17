@@ -6,6 +6,10 @@ const { workerEnv } = vi.hoisted(() => ({
   workerEnv: {} as Record<string, string>,
 }));
 vi.mock("cloudflare:workers", () => ({ env: workerEnv }));
+vi.mock(
+  "@/server/features/projects/repositories/ProjectMemberRepository",
+  () => ({ ProjectMemberRepository: { acceptInvites: vi.fn(async () => {}) } }),
+);
 vi.mock("./delegated", () => ({
   ensureUserRecord: vi.fn(async (_userId: string, email: string) => email),
 }));

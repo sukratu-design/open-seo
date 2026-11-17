@@ -512,6 +512,20 @@
       "when": 1794566370445,
       "tag": "0072_same_sue_storm",
       "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "6",
+      "when": 1794904702903,
+      "tag": "0073_nebulous_liz_osborn",
+      "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "6",
+      "when": 1794905197219,
+      "tag": "0074_flaky_gravity",
+      "breakpoints": true
     }
   ]
 }

@@ -102,6 +102,20 @@ export default {
   ],
   // Optional, each all or nothing: OpenSEO opens without them.
   features: {
+    clientInvites: {
+      name: "Client invites",
+      why: "Lets owners invite a client to one project by email: OpenSEO asks the Gateway to invite them as a Member.",
+      steps: [
+        "Create a personal access token in the Gateway: Manage workspace -> Tokens, Read & write, All apps",
+        "everyapp secret set GATEWAY_ADMIN_TOKEN --app openseo",
+      ],
+      secrets: [
+        {
+          name: "GATEWAY_ADMIN_TOKEN",
+          how: "A Gateway personal access token with Read & write permission for All apps.",
+        },
+      ],
+    },
     // Audits run without it: the "Render JavaScript" option says an admin
     // sets it (src/server/lib/audit/rendering-policy.ts).
     rendering: {
@@ -139,13 +153,13 @@ export default {
   // Both Workers, from cloudflare.config.ts and vite-plugin-every-app.ts.
   build: "pnpm build:report-widgets && AUTH_MODE=everyapp pnpm exec vite build",
   dev: "pnpm build:report-widgets && AUTH_MODE=everyapp pnpm exec vite dev --host 127.0.0.1",
-  // Nothing reaches OpenSEO without a signed-in member: report sharing and
-  // the other unauthenticated routes are hosted-only, and the gateway's tool
-  // calls (`/__everyapp/tools/*`) carry their own gateway-signed tokens.
+  // Project share documents are public, read-only GETs authenticated by an
+  // unguessable capability. All other app routes require a signed-in member;
+  // gateway tool calls carry their own gateway-signed tokens.
   // Every member opens OpenSEO once it is installed, like the other three
   // launch apps (OpenCRM, OpenAnalytics, Agentic Inbox): the documented
   // default for them. Without it a fresh install opens to owners and admins
   // only, and an admin grants the rest by hand.
   access: "everyone",
-  public: [],
+  public: [{ path: "/share/project/:token", methods: ["GET"] }],
 } as const;

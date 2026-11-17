@@ -1,3 +1,4 @@
+import { ProjectShareSection } from "./ProjectShareSection";
 import { ProjectAccessSection } from "./ProjectAccessSection";
 import { useState } from "react";
 import { projectsQueryOptions } from "@/client/features/projects/projectQueries";
@@ -44,6 +45,7 @@ export function ProjectGeneralSettings({ projectId }: { projectId: string }) {
             {/* key resets the form's local state when switching between projects */}
             <GeneralSection key={project.id} project={project} />
             <ProjectAccessSection projectId={project.id} />
+            <ProjectShareSection projectId={project.id} />
             <DangerSection project={project} canArchive={projects.length > 1} />
           </div>
         );

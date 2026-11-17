@@ -1,3 +1,4 @@
+import { GoogleDashboardCacheService } from "@/server/features/dashboard/services/GoogleDashboardCacheService";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { waitUntil } from "cloudflare:workers";
@@ -106,6 +107,19 @@ export const getGa4DashboardReport = createServerFn({ method: "POST" })
         engagementRate: overviewMetric(row, "engagementRate"),
         keyEvents: overviewMetric(row, "keyEvents"),
       });
+      await GoogleDashboardCacheService.save(
+        "ga4",
+        context.projectId,
+        context.organizationId,
+        {
+          totals: totals(overview.current),
+          trend: fillDailySessions(
+            overview.trend,
+            overview.request.resolvedDateRange,
+          ).map((row) => ({ date: row.date, value: row.sessions })),
+          ...overview.request.resolvedDateRange,
+        },
+      );
       return {
         connected: true as const,
         totals: totals(overview.current),

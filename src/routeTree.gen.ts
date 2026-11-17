@@ -49,6 +49,7 @@ import { Route as ReportMapGrantCopyrightRouteImport } from './routes/report-map
 import { Route as STokenIndexRouteImport } from './routes/s/$token/index'
 import { Route as STokenOgDotpngRouteImport } from './routes/s/$token/og[.]png'
 import { Route as STokenRawRouteImport } from './routes/s/$token/raw'
+import { Route as ShareProjectTokenRouteImport } from './routes/share/project/$token'
 import { Route as AppPProjectIdIndexRouteImport } from './routes/_app/p/$projectId/index'
 import { Route as AppPProjectIdAiVisibilityRouteImport } from './routes/_app/p/$projectId/ai-visibility'
 import { Route as AppPProjectIdBacklinksRouteImport } from './routes/_app/p/$projectId/backlinks'
@@ -284,6 +285,11 @@ const STokenRawRoute = STokenRawRouteImport.update({
   path: '/s/$token/raw',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ShareProjectTokenRoute = ShareProjectTokenRouteImport.update({
+  id: '/share/project/$token',
+  path: '/share/project/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppPProjectIdIndexRoute = AppPProjectIdIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -505,6 +511,7 @@ export interface FileRoutesByFullPath {
   '/report-map/$grant/copyright': typeof ReportMapGrantCopyrightRoute
   '/s/$token/og.png': typeof STokenOgDotpngRoute
   '/s/$token/raw': typeof STokenRawRoute
+  '/share/project/$token': typeof ShareProjectTokenRoute
   '/settings/': typeof AppSettingsIndexRoute
   '/onboarding/': typeof AuthenticatedOnboardingIndexRoute
   '/s/$token/': typeof STokenIndexRoute
@@ -575,6 +582,7 @@ export interface FileRoutesByTo {
   '/report-map/$grant/copyright': typeof ReportMapGrantCopyrightRoute
   '/s/$token/og.png': typeof STokenOgDotpngRoute
   '/s/$token/raw': typeof STokenRawRoute
+  '/share/project/$token': typeof ShareProjectTokenRoute
   '/settings': typeof AppSettingsIndexRoute
   '/onboarding': typeof AuthenticatedOnboardingIndexRoute
   '/s/$token': typeof STokenIndexRoute
@@ -647,6 +655,7 @@ export interface FileRoutesById {
   '/report-map/$grant/copyright': typeof ReportMapGrantCopyrightRoute
   '/s/$token/og.png': typeof STokenOgDotpngRoute
   '/s/$token/raw': typeof STokenRawRoute
+  '/share/project/$token': typeof ShareProjectTokenRoute
   '/_app/settings/': typeof AppSettingsIndexRoute
   '/_authenticated/onboarding/': typeof AuthenticatedOnboardingIndexRoute
   '/s/$token/': typeof STokenIndexRoute
@@ -721,6 +730,7 @@ export interface FileRouteTypes {
     | '/report-map/$grant/copyright'
     | '/s/$token/og.png'
     | '/s/$token/raw'
+    | '/share/project/$token'
     | '/settings/'
     | '/onboarding/'
     | '/s/$token/'
@@ -791,6 +801,7 @@ export interface FileRouteTypes {
     | '/report-map/$grant/copyright'
     | '/s/$token/og.png'
     | '/s/$token/raw'
+    | '/share/project/$token'
     | '/settings'
     | '/onboarding'
     | '/s/$token'
@@ -862,6 +873,7 @@ export interface FileRouteTypes {
     | '/report-map/$grant/copyright'
     | '/s/$token/og.png'
     | '/s/$token/raw'
+    | '/share/project/$token'
     | '/_app/settings/'
     | '/_authenticated/onboarding/'
     | '/s/$token/'
@@ -922,6 +934,7 @@ export interface RootRouteChildren {
   ReportMapGrantCopyrightRoute: typeof ReportMapGrantCopyrightRoute
   STokenOgDotpngRoute: typeof STokenOgDotpngRoute
   STokenRawRoute: typeof STokenRawRoute
+  ShareProjectTokenRoute: typeof ShareProjectTokenRoute
   STokenIndexRoute: typeof STokenIndexRoute
   ApiGa4OauthCallbackRoute: typeof ApiGa4OauthCallbackRoute
   ApiGscOauthCallbackRoute: typeof ApiGscOauthCallbackRoute
@@ -1209,6 +1222,13 @@ declare module '@tanstack/react-router' {
       path: '/s/$token/raw'
       fullPath: '/s/$token/raw'
       preLoaderRoute: typeof STokenRawRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/share/project/$token': {
+      id: '/share/project/$token'
+      path: '/share/project/$token'
+      fullPath: '/share/project/$token'
+      preLoaderRoute: typeof ShareProjectTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app/p/$projectId/': {
@@ -1660,6 +1680,7 @@ const rootRouteChildren: RootRouteChildren = {
   ReportMapGrantCopyrightRoute: ReportMapGrantCopyrightRoute,
   STokenOgDotpngRoute: STokenOgDotpngRoute,
   STokenRawRoute: STokenRawRoute,
+  ShareProjectTokenRoute: ShareProjectTokenRoute,
   STokenIndexRoute: STokenIndexRoute,
   ApiGa4OauthCallbackRoute: ApiGa4OauthCallbackRoute,
   ApiGscOauthCallbackRoute: ApiGscOauthCallbackRoute,

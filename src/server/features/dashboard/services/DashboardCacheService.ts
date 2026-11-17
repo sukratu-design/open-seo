@@ -77,6 +77,23 @@ async function readThrough<T>(input: {
   }
 }
 
+// Public readers never acquire refresh claims or invoke a loader.
+async function getCachedOnly<T>(input: {
+  namespace: string;
+  organizationId: string;
+  params: Record<string, unknown>;
+  schema: z.ZodType<T>;
+}) {
+  const key = await buildCacheKey(input.namespace, {
+    ...input.params,
+    organizationId: input.organizationId,
+  });
+  const parsed = z
+    .object({ value: input.schema, fetchedAt: z.string() })
+    .safeParse(await getCached(key));
+  return parsed.success ? parsed.data : null;
+}
+
 // Search Console rows are Google data the privacy policy lets users remove, so
 // every cached copy for a project sits under one prefix that disconnect,
 // project deletion, and account erasure can drop.
@@ -93,6 +110,7 @@ async function deleteGscCache(projectId: string) {
 
 export const DashboardCacheService = {
   readThrough,
+  getCachedOnly,
   gscNamespace,
   deleteGscCache,
 };

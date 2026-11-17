@@ -98,6 +98,8 @@ export const {
   guestAccounts,
   projects,
   projectMembers,
+  projectInvites,
+  projectShareLinks,
   savedKeywords,
   savedKeywordTags,
   savedKeywordTagAssignments,

@@ -6,6 +6,13 @@ import {
   getSearchPerformanceTable,
 } from "./searchPerformance";
 
+vi.mock(
+  "@/server/features/dashboard/services/GoogleDashboardCacheService",
+  () => ({
+    GoogleDashboardCacheService: { save: async () => {} },
+  }),
+);
+
 const { getPerformance } = vi.hoisted(() => ({ getPerformance: vi.fn() }));
 vi.mock("@/server/features/gsc/services/GscService", () => ({
   GscService: { getPerformance },

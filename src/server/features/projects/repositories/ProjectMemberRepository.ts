@@ -1,6 +1,6 @@
 import { and, asc, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { projectMembers, user } from "@/db/schema";
+import { projectInvites, projectMembers, user } from "@/db/schema";
 
 async function listProjectMembers(projectId: string) {
   return db
@@ -46,7 +46,79 @@ async function removeProjectMember(projectId: string, userId: string) {
     );
 }
 
+async function listInvites(projectId: string) {
+  return db
+    .select({
+      id: projectInvites.id,
+      email: projectInvites.email,
+      createdAt: projectInvites.createdAt,
+    })
+    .from(projectInvites)
+    .where(eq(projectInvites.projectId, projectId))
+    .orderBy(asc(projectInvites.email));
+}
+
+async function saveInvite(
+  projectId: string,
+  email: string,
+  invitedByUserId: string,
+) {
+  await db
+    .insert(projectInvites)
+    .values({ id: crypto.randomUUID(), projectId, email, invitedByUserId })
+    .onConflictDoNothing();
+}
+
+async function revokeInvite(projectId: string, inviteId: string) {
+  const [invite] = await db
+    .delete(projectInvites)
+    .where(
+      and(
+        eq(projectInvites.projectId, projectId),
+        eq(projectInvites.id, inviteId),
+      ),
+    )
+    .returning({ email: projectInvites.email });
+  return invite;
+}
+
+async function hasPendingInvites(email: string) {
+  return (
+    (
+      await db
+        .select({ id: projectInvites.id })
+        .from(projectInvites)
+        .where(eq(projectInvites.email, email))
+        .limit(1)
+    ).length > 0
+  );
+}
+
+async function acceptInvites(userId: string, email: string) {
+  const invites = await db
+    .select()
+    .from(projectInvites)
+    .where(eq(projectInvites.email, email.trim().toLowerCase()));
+  for (const invite of invites) {
+    await db
+      .insert(projectMembers)
+      .values({
+        projectId: invite.projectId,
+        userId,
+        addedBy: invite.invitedByUserId,
+      })
+      .onConflictDoNothing();
+    // Delete only after the grant succeeds; a retry safely finishes an interrupted conversion.
+    await db.delete(projectInvites).where(eq(projectInvites.id, invite.id));
+  }
+}
+
 export const ProjectMemberRepository = {
+  listInvites,
+  saveInvite,
+  revokeInvite,
+  hasPendingInvites,
+  acceptInvites,
   listProjectMembers,
   findUserByEmail,
   addProjectMember,

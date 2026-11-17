@@ -1,3 +1,4 @@
+import type { EveryAppUser } from "@every-app/sdk/server";
 import { sort } from "remeda";
 import { readFileSync, readdirSync } from "node:fs";
 import { createClient } from "@libsql/client";
@@ -5,6 +6,7 @@ import { drizzle } from "drizzle-orm/libsql";
 import { beforeAll, afterAll, expect, it, vi } from "vitest";
 import * as schema from "@/db/schema";
 import { ProjectService } from "./ProjectService";
+import { resolveEveryAppUserContext } from "@/middleware/ensure-user/everyApp";
 import { ProjectMemberService } from "./ProjectMemberService";
 import { withMcpProjectAuth } from "@/server/mcp/project-auth";
 import { makeToolContext } from "@/server/mcp/tools/tool-test-support";
@@ -140,33 +142,22 @@ it("refuses unlisted and cross-org report documents identically", async () => {
   expect(await responses[0].text()).toBe(await responses[1].text());
 });
 
-it("only admins can add/remove grants and unknown emails explain Gateway onboarding", async () => {
+it("only admins can add/remove grants and existing emails add directly", async () => {
   await expect(
-    ProjectMemberService.addProjectMember(
-      "hidden",
-      "client@example.com",
-      member,
-    ),
+    ProjectMemberService.inviteByEmail("hidden", "client@example.com", member),
   ).rejects.toMatchObject({ code: "FORBIDDEN" });
-  await expect(
-    ProjectMemberService.addProjectMember(
-      "hidden",
-      "unknown@example.com",
-      admin,
-    ),
-  ).rejects.toThrow("open OpenSEO once through the Gateway");
-  await ProjectMemberService.addProjectMember(
+  await ProjectMemberService.inviteByEmail(
     "hidden",
     "CLIENT@example.com",
     admin,
   );
-  await ProjectMemberService.addProjectMember(
+  await ProjectMemberService.inviteByEmail(
     "hidden",
     "client@example.com",
     admin,
   );
   expect(
-    await ProjectMemberService.listProjectMembers("hidden", admin),
+    (await ProjectMemberService.listAccess("hidden", admin)).members,
   ).toEqual([
     expect.objectContaining({ userId: "client", email: "client@example.com" }),
   ]);
@@ -195,7 +186,7 @@ it("leaves project visibility unchanged outside Every App", async () => {
       ),
     ).toEqual(new Set(["allowed", "hidden"]));
     await expect(
-      ProjectMemberService.listProjectMembers("hidden", admin),
+      ProjectMemberService.listAccess("hidden", admin),
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
   } finally {
     test.everyapp = true;
@@ -217,4 +208,45 @@ it("filters archived projects without revealing unassigned project names", async
   expect(
     (await ProjectService.listArchivedProjects("org", admin)).map((p) => p.id),
   ).toEqual(["archived"]);
+});
+
+it("converts normalized pending invites on verified user ensure, idempotently", async () => {
+  await ProjectMemberService.inviteByEmail(
+    "hidden",
+    " NewClient@Example.com ",
+    admin,
+  );
+  const identity: EveryAppUser = {
+    channel: "web",
+    actor: { sub: "new-client" },
+    scopes: [],
+    jti: "invite-test",
+    id: "new-client",
+    email: "NEWCLIENT@example.com",
+    orgId: "workspace",
+    orgRole: "member",
+  };
+  await resolveEveryAppUserContext(identity);
+  await resolveEveryAppUserContext(identity);
+  const access = await ProjectMemberService.listAccess("hidden", admin);
+  expect(access.invites).toEqual([]);
+  expect(access.members).toEqual([
+    expect.objectContaining({ userId: "new-client" }),
+  ]);
+});
+
+it("revokes pending invites and refuses cross-organization invitations", async () => {
+  await expect(
+    ProjectMemberService.inviteByEmail("foreign", "pending@example.com", admin),
+  ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  await ProjectMemberService.inviteByEmail(
+    "hidden",
+    "pending@example.com",
+    admin,
+  );
+  const { invites } = await ProjectMemberService.listAccess("hidden", admin);
+  await ProjectMemberService.revokeInvite("hidden", invites[0].id, admin);
+  expect(
+    (await ProjectMemberService.listAccess("hidden", admin)).invites,
+  ).toEqual([]);
 });
