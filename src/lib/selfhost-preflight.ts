@@ -167,6 +167,16 @@ function checkAuthMode(env: EnvRecord, items: PreflightItem[]): void {
 }
 
 function checkDataForSeo(env: EnvRecord, items: PreflightItem[]): void {
+  if (get(env, "TREG_API_KEY")) {
+    items.push({
+      key: "dataforseo",
+      name: "TREG_API_KEY",
+      level: "ok",
+      message:
+        "DataForSEO calls route through Treg, billed from the Treg prepaid balance.",
+    });
+    return;
+  }
   if (get(env, "AUTH_MODE") === "everyapp") {
     items.push({
       key: "dataforseo",

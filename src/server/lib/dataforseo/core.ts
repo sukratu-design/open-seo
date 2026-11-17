@@ -146,6 +146,8 @@ function createAuthenticatedFetch(
     // for the US location list) and slow links hit the timeout. That runtime
     // then leaves the body gzipped, so read it with readDataforseoText.
     const headers = new Headers(init?.headers);
+    if (!headers.has("Idempotency-Key"))
+      headers.set("Idempotency-Key", crypto.randomUUID());
     if (!headers.has("Accept-Encoding")) headers.set("Accept-Encoding", "gzip");
 
     for (let attempt = 0; ; attempt++) {
@@ -164,7 +166,31 @@ function createAuthenticatedFetch(
         // so replaying would be spend we eat twice.
         throw asDataforseoTimeoutError(error, url);
       }
+      const tregCallId = response.headers.get("X-Treg-Call-Id");
+      const tregCostMicro = response.headers.get("X-Treg-Cost-Micro");
+      if (tregCallId || tregCostMicro) {
+        const log = response.ok ? console.info : console.warn;
+        log("dataforseo.treg-response", {
+          callId: tregCallId,
+          costMicro: tregCostMicro,
+          status: response.status,
+        });
+      }
       if (response.ok) return response;
+
+      const tregRefusal = response.headers.get("X-Treg-Error") === "1";
+      if (tregRefusal && response.status === 402) {
+        throw new AppError(
+          "PAYMENT_REQUIRED",
+          "The Treg prepaid balance is too low. Top up your Treg balance to continue.",
+        );
+      }
+      if (tregRefusal && response.status === 401) {
+        throw new AppError(
+          "AUTH_CONFIG_MISSING",
+          "Treg authentication failed. Check the TREG_API_KEY team API key.",
+        );
+      }
 
       // A gateway refusal: retrying can't fix it.
       const refused = await gatewayRefusalError(response);
@@ -180,7 +206,9 @@ function createAuthenticatedFetch(
 
       const rawText = await readDataforseoText(response);
       const path = formatDataforseoRequestPath(url);
-      const classified = classify?.(response.status, rawText, path);
+      const classified = tregRefusal
+        ? null
+        : classify?.(response.status, rawText, path);
       if (classified) throw classified;
 
       // An unverified account (status_code 40104) answers with 403, not 401.
@@ -194,7 +222,7 @@ function createAuthenticatedFetch(
               : "INTERNAL_ERROR";
       const error = new AppError(
         code,
-        `DataForSEO HTTP ${response.status} on ${path}`,
+        `${tregRefusal ? "Treg proxy" : "DataForSEO"} HTTP ${response.status} on ${path}`,
         {
           provider: "dataforseo",
           providerStatus: String(response.status),
@@ -300,7 +328,7 @@ export function dataforseoPostResponse(
     options.classify,
     options.maxServerErrorRetries,
   );
-  return doFetch(`${API_BASE}${path}`, {
+  return doFetch(`${options.baseUrl ?? API_BASE}${path}`, {
     method: "POST",
     headers: { Accept: "application/json", "Content-Type": "application/json" },
     body: JSON.stringify(tasks),

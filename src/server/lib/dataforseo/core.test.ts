@@ -1,5 +1,5 @@
 import { gzipSync } from "node:zlib";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/server/lib/runtime-env", () => ({
   // AUTH_MODE unset: the deployment holds the DataForSEO key.
@@ -7,7 +7,16 @@ vi.mock("@/server/lib/runtime-env", () => ({
   getRequiredEnvValue: vi.fn(async () => "encoded-credentials"),
 }));
 
-import { dataforseoPost } from "@/server/lib/dataforseo/core";
+import { getOptionalEnvValue } from "@/server/lib/runtime-env";
+import {
+  dataforseoGet,
+  dataforseoPostResponse,
+  dataforseoPost,
+} from "@/server/lib/dataforseo/core";
+
+beforeEach(() => {
+  vi.mocked(getOptionalEnvValue).mockResolvedValue(undefined);
+});
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -109,5 +118,96 @@ describe("DataForSEO transport", () => {
       code: "UPSTREAM_UNAVAILABLE",
       name: "DataForSEOTimeoutError",
     });
+  });
+});
+
+describe("Treg transport", () => {
+  beforeEach(() => {
+    vi.mocked(getOptionalEnvValue).mockImplementation(async (name) =>
+      name === "TREG_API_KEY" ? "test-treg-key" : undefined,
+    );
+  });
+
+  it("preserves tasks and envelopes and reuses an idempotency key on retries", async () => {
+    const envelope = { status_code: 20000, tasks: [] };
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response("temporary", { status: 503 }))
+      .mockResolvedValueOnce(Response.json(envelope));
+    vi.stubGlobal("fetch", fetchMock);
+    const tasks = [{ target: "example.com" }];
+    await expect(
+      dataforseoPost("/v3/backlinks/referring_domains/live", tasks),
+    ).resolves.toEqual(envelope);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const keys = fetchMock.mock.calls.map(([url, init]) => {
+      expect(url).toBe(
+        "https://treg.to/call/dataforseo/backlinks/referring_domains/live",
+      );
+      expect(init?.body).toBe(JSON.stringify(tasks));
+      const headers = new Headers(init?.headers);
+      expect(headers.get("X-Treg-Token")).toBe("test-treg-key");
+      expect(headers.has("Authorization")).toBe(false);
+      expect(headers.get("Idempotency-Key")).toBeTruthy();
+      return headers.get("Idempotency-Key");
+    });
+    expect(keys[0]).toBe(keys[1]);
+  });
+
+  it.each([
+    [402, "PAYMENT_REQUIRED", "Treg prepaid balance"],
+    [401, "AUTH_CONFIG_MISSING", "Treg authentication"],
+    [403, "DATAFORSEO_AUTH_FAILED", "Treg proxy"],
+    [429, "RATE_LIMITED", "Treg proxy"],
+    [503, "UPSTREAM_UNAVAILABLE", "Treg proxy"],
+  ])("classifies a Treg %s refusal", async (status, code, message) => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn<typeof fetch>()
+        .mockResolvedValue(
+          new Response("refused", { status, headers: { "X-Treg-Error": "1" } }),
+        ),
+    );
+    await expect(
+      dataforseoPost("/v3/backlinks/summary/live", [], {
+        maxServerErrorRetries: 0,
+      }),
+    ).rejects.toMatchObject({
+      code,
+      message: expect.stringContaining(message),
+    });
+  });
+
+  it.each([dataforseoGet, dataforseoPostResponse])(
+    "routes the other request entry points through Treg",
+    async (request) => {
+      const fetchMock = vi
+        .fn<typeof fetch>()
+        .mockResolvedValue(Response.json({ tasks: [] }));
+      vi.stubGlobal("fetch", fetchMock);
+      if (request === dataforseoGet)
+        await dataforseoGet("/v3/appendix/locations");
+      else await dataforseoPostResponse("/v3/on_page/lighthouse/live/json", []);
+      expect(fetchMock.mock.calls[0][0]).toMatch(
+        /^https:\/\/treg.to\/call\/dataforseo\//,
+      );
+    },
+  );
+
+  it("keeps explicit sandbox requests on the sandbox host", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(Response.json({ tasks: [] }));
+    vi.stubGlobal("fetch", fetchMock);
+    await dataforseoPost("/v3/serp/google/organic/live/advanced", [], {
+      baseUrl: "https://sandbox.dataforseo.com",
+    });
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      "https://sandbox.dataforseo.com/v3/serp/google/organic/live/advanced",
+    );
+    expect(
+      new Headers(fetchMock.mock.calls[0][1]?.headers).has("X-Treg-Token"),
+    ).toBe(false);
   });
 });

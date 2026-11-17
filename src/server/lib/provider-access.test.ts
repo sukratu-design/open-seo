@@ -1,5 +1,5 @@
 import { UnsecuredJWT } from "jose";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 
 const { workerEnv } = vi.hoisted(() => ({
   workerEnv: {} as Record<string, unknown>,
@@ -13,7 +13,12 @@ import {
   hasProviderAccess,
 } from "./provider-access";
 
+beforeEach(() => {
+  vi.stubEnv("TREG_API_KEY", "");
+});
+
 afterEach(() => {
+  vi.unstubAllEnvs();
   for (const key of Object.keys(workerEnv)) delete workerEnv[key];
   vi.unstubAllGlobals();
 });
@@ -56,6 +61,24 @@ describe("provider access with the deployment's own keys", () => {
 });
 
 describe("provider access behind an Every App gateway", () => {
+  it("uses Treg without a gateway binding when only its team key is set", async () => {
+    Object.assign(workerEnv, {
+      AUTH_MODE: "everyapp",
+      TREG_API_KEY: "test-treg-key",
+    });
+    fetchMock.mockResolvedValue(new Response("{}"));
+    vi.stubGlobal("fetch", fetchMock);
+    expect(await hasProviderAccess("dataforseo")).toBe(true);
+    await (
+      await getDataforseoFetch()
+    )("https://api.dataforseo.com/v3/x");
+    expect(
+      new Headers(fetchMock.mock.calls.at(-1)?.[1]?.headers).get(
+        "X-Treg-Token",
+      ),
+    ).toBe("test-treg-key");
+    expect(lastAuthorization()).toBeNull();
+  });
   it("never uses a key on the deployment, and refuses without the gateway binding", async () => {
     Object.assign(workerEnv, {
       AUTH_MODE: "everyapp",

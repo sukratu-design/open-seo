@@ -1,4 +1,4 @@
-import { expect, it, vi } from "vitest";
+import { beforeEach, afterEach, expect, it, vi } from "vitest";
 
 vi.mock("@/server/lib/runtime-env", () => ({
   // AUTH_MODE unset: the deployment holds the DataForSEO key.
@@ -6,7 +6,11 @@ vi.mock("@/server/lib/runtime-env", () => ({
   getRequiredEnvValue: vi.fn(async () => "test-api-key"),
 }));
 
-import { resolveGotoUrls } from "@/server/lib/dataforseo/appendix";
+import { getOptionalEnvValue } from "@/server/lib/runtime-env";
+import {
+  fetchUserData,
+  resolveGotoUrls,
+} from "@/server/lib/dataforseo/appendix";
 
 it("maps each goto URL to its page and leaves out one it couldn't resolve", async () => {
   const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
@@ -43,4 +47,20 @@ it("maps each goto URL to its page and leaves out one it couldn't resolve", asyn
       body: JSON.stringify([{ goto_urls: urls }]),
     }),
   );
+});
+
+beforeEach(() => {
+  vi.mocked(getOptionalEnvValue).mockResolvedValue(undefined);
+});
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+it("skips own-account usage when Treg is configured", async () => {
+  vi.mocked(getOptionalEnvValue).mockImplementation(async (name) =>
+    name === "TREG_API_KEY" ? "test-treg-key" : undefined,
+  );
+  const fetchMock = vi.fn<typeof fetch>();
+  vi.stubGlobal("fetch", fetchMock);
+  await expect(fetchUserData()).resolves.toBeUndefined();
+  expect(fetchMock).not.toHaveBeenCalled();
 });

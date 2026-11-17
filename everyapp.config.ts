@@ -102,6 +102,16 @@ export default {
   ],
   // Optional, each all or nothing: OpenSEO opens without them.
   features: {
+    treg: {
+      name: "Treg DataForSEO proxy",
+      why: "Routes DataForSEO calls through Treg using a team API key, billed from the Treg prepaid balance.",
+      secrets: [
+        {
+          name: "TREG_API_KEY",
+          how: "A Treg team API key from https://treg.to/app#orgs/keys; routes DataForSEO calls through Treg, billed from the Treg prepaid balance.",
+        },
+      ],
+    },
     "client-invites": {
       name: "Client invites",
       why: "Lets owners invite a client to one project by email: OpenSEO asks the Gateway to invite them as a Member.",

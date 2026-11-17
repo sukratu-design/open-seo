@@ -58,6 +58,30 @@ async function gatewayFetch(provider: OpenSeoProvider) {
 
 /** A fetch that reaches DataForSEO authenticated, for this deployment. */
 export async function getDataforseoFetch(): Promise<typeof fetch> {
+  const tregKey = await getOptionalEnvValue("TREG_API_KEY");
+  if (tregKey) {
+    return (input, init) => {
+      const url = new URL(
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.href
+            : input.url,
+      );
+      if (
+        url.origin !== "https://api.dataforseo.com" ||
+        !url.pathname.startsWith("/v3/")
+      ) {
+        return fetch(input, init);
+      }
+      const headers = new Headers(init?.headers);
+      headers.delete("Authorization");
+      headers.set("X-Treg-Token", tregKey);
+      url.hostname = "treg.to";
+      url.pathname = `/call/dataforseo/${url.pathname.slice(4)}`;
+      return fetch(url.href, { ...init, headers });
+    };
+  }
   if (await isBehindEveryAppGateway()) {
     const providerFetch = await gatewayFetch("dataforseo");
     if (!providerFetch) {
@@ -97,6 +121,8 @@ const KEY_ENV: Record<OpenSeoProvider, string> = {
 export async function hasProviderAccess(
   provider: OpenSeoProvider,
 ): Promise<boolean> {
+  if (provider === "dataforseo" && (await getOptionalEnvValue("TREG_API_KEY")))
+    return true;
   if (await isBehindEveryAppGateway()) {
     const status = await integrationStatus({
       env: await gatewayEnv(),

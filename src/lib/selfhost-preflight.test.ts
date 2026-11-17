@@ -60,3 +60,16 @@ describe("runSelfhostPreflight", () => {
     expect(itemFor(result, "Search Console")?.message).toContain("32");
   });
 });
+
+it.each(["local_noauth", "everyapp"])(
+  "accepts Treg DataForSEO access in %s mode",
+  (mode) => {
+    const result = runSelfhostPreflight({
+      AUTH_MODE: mode,
+      TREG_API_KEY: "test-treg-key",
+    });
+    expect(
+      result.items.find((item) => item.key === "dataforseo"),
+    ).toMatchObject({ level: "ok", name: "TREG_API_KEY" });
+  },
+);

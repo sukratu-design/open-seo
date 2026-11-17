@@ -1,3 +1,4 @@
+import { getOptionalEnvValue } from "@/server/lib/runtime-env";
 import { z } from "zod";
 import { dataforseoGet, dataforseoPost } from "@/server/lib/dataforseo/core";
 import {
@@ -66,6 +67,7 @@ interface DataforseoUserData {
  * business_data, …) for the rolling day / minute window.
  */
 export async function fetchUserData(): Promise<DataforseoUserData | undefined> {
+  if (await getOptionalEnvValue("TREG_API_KEY")) return undefined;
   const response = await dataforseoGet<
     DataforseoTaskLike & { result?: DataforseoUserData[] }
   >("/v3/appendix/user_data");
